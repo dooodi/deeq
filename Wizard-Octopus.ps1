@@ -1,5 +1,28 @@
 #requires -Modules Az.Accounts
 
+# ------------------------------------------------------------
+# Relaunch in a visible ConsoleHost with -NoExit so the window
+# stays open when the script finishes. We guard with an env var
+# to ensure the block runs only once.
+# ------------------------------------------------------------
+if (-not $env:WIZARDOCTOPUS_RELAUNCHED) {
+    # If we're not already in the standard ConsoleHost or the
+    # script wasn't invoked with -NoExit, start a new process.
+    if ($Host.Name -ne 'ConsoleHost') {
+        $env:WIZARDOCTOPUS_RELAUNCHED = '1'
+
+        # Determine current script path
+        $scriptPath = if ($PSCommandPath) { $PSCommandPath } else { $MyInvocation.MyCommand.Definition }
+
+        # Launch a new console window running this script with -NoExit
+        Start-Process -FilePath "powershell.exe" -WindowStyle Normal -ArgumentList @("-NoExit","-ExecutionPolicy","Bypass","-File",$scriptPath)
+
+        # Terminate the original instance so only the relaunched
+        # copy continues execution.
+        exit
+    }
+}
+
 # =================================================================================
 #                        Wizard-Octopus (Multi-Tenant-IOC's-Blocker)
 #                                 Azure Login Version
@@ -149,13 +172,13 @@ if (-not $token) {
 $iocValue = Read-Host "Enter IOC (e.g., 1.2.3.4)"
 $IocType  = Read-Host "Enter IOC type (IpAddress, DomainName, Url, FileSha256, FileSha1, FileMd5)"
 $title    = Read-Host "Enter title"
-descr     = Read-Host "Enter description"
+$descr     = Read-Host "Enter description"
 
 Submit-IOC -Token $token -IndicatorValue $iocValue -IndicatorType $IocType -Title $title -Description $descr | Out-Null
 
 # Show final summary (unchanged)
 Write-Host "Script completed." -ForegroundColor Cyan
 Read-Host "Press Enter to exit..."
-
-# Keep the PowerShell window open so the user can review the results
-Read-Host "Script complete. Press Enter to close this window..."
+# ------------------------------------------------------------
+# END OF SCRIPT
+# ------------------------------------------------------------
